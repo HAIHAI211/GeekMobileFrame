@@ -1,7 +1,7 @@
 import React from 'react'
 import {StyleSheet, View, Text} from 'react-native'
 import {CommonStyle} from '../../../../assets/styles'
-import {PullFlatList} from '../../../../components/rk'
+import {PullFlatList} from '../../../../components/pullflatlist'
 import {rpx} from '../../../../utils/screenUtil'
 
 class PullRefreshDemoPage extends React.Component {

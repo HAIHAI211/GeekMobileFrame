@@ -70,13 +70,13 @@ export default class Pullable extends PullRoot {
                         </View>
                     </View>}
             </View>
-        );
+        )
     }
 
     renderScrollContainer = () => {
         return (
             <View
-                ref={(c) => {this.scrollContainer = c;}}
+                ref={(c) => {this.scrollContainer = c}}
                 style={{width: this.state.width, height: this.state.height}}>
                 {this.getScrollable()}
             </View>
@@ -109,14 +109,14 @@ export default class Pullable extends PullRoot {
         if (index.isDownGesture(gesture.dx, gesture.dy) && this.props.refreshable) { //下拉
             let dy = gesture.dy / 2
             this.state.pullPan.setValue({x: this.defaultXY.x, y: this.lastY + dy})
-            this.updatePullState(dy)
+            this.setPullState(dy)
         }
     }
 
     onPanResponderRelease = (e, gesture) => {
-        let refreshing = this.state.pullState === index.PullStates.PULL_OK
+        let refreshing = this.state.pullState === index.PullStateEnum.PULL_OK
         this.setStateRefreshing(refreshing)
-        this.updatePullState(-1)
+        this.setPullState(-1)
     }
 
     // 收起动画(重置刷新的操作)
@@ -155,15 +155,16 @@ export default class Pullable extends PullRoot {
 
 
     onLayout = (e) => {
-        if (this.state.width !== e.nativeEvent.layout.width || this.state.height !== e.nativeEvent.layout.height) {
+        let {width:newWidth, height:newHeight} = e.nativeEvent.layout
+        if (this.state.width !== newWidth || this.state.height !== newHeight) {
             this.scrollContainer && this.scrollContainer.setNativeProps({
                 style: {
-                    width: e.nativeEvent.layout.width,
-                    height: e.nativeEvent.layout.height
+                    width: newWidth,
+                    height: newHeight
                 }
-            });
-            this.state.width = e.nativeEvent.layout.width;
-            this.state.height = e.nativeEvent.layout.height;
+            })
+            this.state.width = newWidth
+            this.state.height = newHeight
         }
     }
 
@@ -201,23 +202,21 @@ export default class Pullable extends PullRoot {
     }
 
     //下拉的时候根据高度进行对应的操作
-    updatePullState = (moveHeight) => {
+    setPullState = (moveHeight) => {
         let topHeight = this.topIndicatorHeight
         if (moveHeight > 0 && moveHeight < topHeight) { //此时是下拉没有到位的状态
-            // this.pullState = "pulling"
             this.setState({
-                pullState: index.PullStates.PULLING
+                pullState: index.PullStateEnum.PULLING
             })
         } else if (moveHeight >= topHeight) { //下拉刷新到位
-            // this.pullState = "pullok"
             this.setState({
-                pullState: index.PullStates.PULL_OK
+                pullState: index.PullStateEnum.PULL_OK
             })
         } else { //下拉刷新释放,此时返回的值为-1
-            // this.pullState = "pullrelease"
             this.setState({
-                pullState: index.PullStates.PULL_RELEASE
+                pullState: index.PullStateEnum.PULL_RELEASE
             })
         }
+        this.props.onPullStateChange && this.props.onPullStateChange(this.state.pullState.code)
     }
 }
