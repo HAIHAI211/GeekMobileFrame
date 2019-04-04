@@ -12,7 +12,7 @@ class PullRefreshDemoPage extends React.Component {
     constructor (props) {
         super(props)
         this.state = {
-            refreshing: false,
+            refreshing: true,
             dataSource: []
         }
     }
@@ -56,6 +56,9 @@ class PullRefreshDemoPage extends React.Component {
     }
 
     _onRefresh = (refreshing) => {
+        if (refreshing) {
+            console.warn('onRefresh')
+        }
         this.setState({
             refreshing
         })
@@ -68,7 +71,7 @@ class PullRefreshDemoPage extends React.Component {
                     dataSource: this._fetchList(),
                     refreshing: false
                 })
-            }, 2000)
+            }, 4000)
         }
     }
 }

@@ -14,6 +14,22 @@ import PullRoot from './PullRoot'
  @author 孙正
  * */
 
+// 收起动画(重置刷新的操作)
+
+const xyAnim = (startXY, targetXY, duration) => {
+    return new Promise((resolve, reject) => {
+        Animated.timing(startXY, {
+            toValue: targetXY,
+            easing: Easing.linear,
+            duration
+        }).start((finished) => {
+            resolve({
+                finished
+            })
+        })
+    })
+}
+
 
 export default class Pullable extends PullRoot {
 
@@ -24,6 +40,7 @@ export default class Pullable extends PullRoot {
         this.topIndicatorHeight = this.props.topIndicatorHeight ?
             this.props.topIndicatorHeight : index.defaultTopIndicatorHeight
         this.defaultXY = {x: 0, y: this.topIndicatorHeight * -1}
+        this.endXY = {x: 0, y: 0}
         this.duration = this.props.duration ? this.props.duration : index.defaultDuration
         this.panResponder = PanResponder.create({
             onStartShouldSetPanResponder: this.onShouldSetPanResponder,
@@ -37,15 +54,13 @@ export default class Pullable extends PullRoot {
             onPanResponderRelease: this.onPanResponderRelease,
             onPanResponderTerminate: this.onPanResponderRelease,
         })
-        // console.warn(props.refreshing)
         this.state = {
             ...this.state,
             props,
-            pullPan: new Animated.ValueXY(this.defaultXY),
+            xy: new Animated.ValueXY(this.defaultXY),
             atTop: true,
             height: 0,
-            width: 0,
-            log: '呵呵'
+            width: 0
         }
     }
 
@@ -54,7 +69,7 @@ export default class Pullable extends PullRoot {
             <View style={{flex: 1, zIndex: -999}} {...this.panResponder.panHandlers} onLayout={this.onLayout}>
                 {this.props.isContentScroll ?
                     <View pointerEvents='box-none'>
-                        <Animated.View style={[this.state.pullPan.getLayout()]}>
+                        <Animated.View style={[this.state.xy.getLayout()]}>
                             {this.renderTopIndicator()}
                             {this.renderScrollContainer()}
                         </Animated.View>
@@ -64,7 +79,7 @@ export default class Pullable extends PullRoot {
                         {this.renderScrollContainer()}
                         <View pointerEvents='box-none'
                               style={{position: 'absolute', left: 0, right: 0, top: 0}}>
-                            <Animated.View style={[this.state.pullPan.getLayout()]}>
+                            <Animated.View style={[this.state.xy.getLayout()]}>
                                 {this.renderTopIndicator()}
                             </Animated.View>
                         </View>
@@ -83,48 +98,17 @@ export default class Pullable extends PullRoot {
         )
     }
 
+    // prop => refreshing change
     componentDidMount = async () => {
-        if (this.props.refreshing !== this.refreshing) {
-            this._setStateRefreshing(this.props.refreshing)
-        }
+        this._setRefreshing(this.props.refreshing, 'DidMount')
     }
 
-    componentDidUpdate = async (prevProps, prevState) =>  {
-        if (this.props.refreshing !== this.refreshing) {
-            this._setStateRefreshing(this.props.refreshing)
-        }
-    }
-
-    // 先移动y，y达到要求（true为flagY,false为defaultY），才能修改refreshing
-    _setStateRefreshing = async (nextRefreshing) => {
-        await this._refreshAnim(nextRefreshing)
-        if (this.animState.code === index.AnimStateEnum.ANIM_OK.code) { // y符合刷新要求
-            this.refreshing = nextRefreshing
-            this.props.onRefresh && this.props.onRefresh(nextRefreshing)
-        }
+    componentDidUpdate = async (prevProps, prevState) =>  { // props或者state改变会触发
+        this._setRefreshing(this.props.refreshing, 'DidUpdate')
     }
 
 
-    //下拉的时候根据高度进行对应的操作
-    setPullState = (moveHeight) => {
-        let topHeight = this.topIndicatorHeight
-        if (moveHeight > 0 && moveHeight < topHeight) { //此时是下拉没有到位的状态
-            this.setState({
-                pullState: index.PullStateEnum.PULLING
-            })
-        } else if (moveHeight >= topHeight) { //下拉刷新到位
-            this.setState({
-                pullState: index.PullStateEnum.PULL_OK
-            })
-        } else { //下拉刷新释放,此时返回的值为-1
-            this.setState({
-                pullState: index.PullStateEnum.PULL_RELEASE
-            })
-        }
-        this.props.onPullStateChange && this.props.onPullStateChange(this.state.pullState.code)
-    }
-
-
+    // pull => refreshing change
     onShouldSetPanResponder = (e, gesture) => { // 顶部+手势向下+配置许可方可开启refresh
         let y = this.scroll._listRef._getScrollMetrics().offset
         //根据y的值来判断是否到达顶部
@@ -132,7 +116,7 @@ export default class Pullable extends PullRoot {
             atTop: y <= 0
         })
         if (this.state.atTop && index.isDownGesture(gesture.dx, gesture.dy) && this.props.refreshable) {
-            this.lastY = this.state.pullPan.y._value
+            this.startY = this._getY()
             return true
         }
         return false
@@ -141,46 +125,90 @@ export default class Pullable extends PullRoot {
     onPanResponderMove = (e, gesture) => {
         if (index.isDownGesture(gesture.dx, gesture.dy) && this.props.refreshable) { //下拉
             let dy = gesture.dy / 2
-            this.state.pullPan.setValue({x: this.defaultXY.x, y: this.lastY + dy})
-            this.setPullState(dy)
+            this.state.xy.setValue({x: this.defaultXY.x, y: this.startY + dy})
+            this._setPullState(dy)
         }
     }
 
     onPanResponderRelease = async (e, gesture) => {
         let nextRefreshing = this.state.pullState.code === index.PullStateEnum.PULL_OK.code
-        this._setStateRefreshing(nextRefreshing)
-        this.setPullState(-1)
+        let nowRefreshing = this.refreshing
+
+        // true => false 恢复true的必要条件(业务逻辑不允许)
+        // false => true 正常调用setRefreshing即可
+        // true => true 恢复true的必要条件
+        // false => false 恢复false的必要条件
+
+        if (nextRefreshing === nowRefreshing || nowRefreshing) {
+            this._refreshAnim(nowRefreshing)
+        } else {
+            this._setRefreshing(nextRefreshing, 'release')
+        }
+        this._setPullState(-1)
+
     }
+
+    _setRefreshing = async (nextRefreshing, byWho) => {
+        if (this.refreshing === nextRefreshing) return // 必须放第一句
+
+        // 满足必要条件(调整y)
+        let isConfirm = await this._confirmRefreshingNecessaryCondition(nextRefreshing)
+        // console.warn(`${byWho}: ${this.refreshing}=>${nextRefreshing},y调整到位${isConfirm}`)
+        if (!isConfirm) return
+
+        // 修改赋值
+        this.refreshing = nextRefreshing
+        this.props.onRefresh && this.props.onRefresh(nextRefreshing)
+    }
+
+
+
+
+
+
+    // 定义refreshing的必要条件: y必须满足要求
+    _getYByRefreshing (refreshing) {
+        return refreshing ? this.endXY.y : (this.defaultXY.y)
+    }
+
+    _getY () {
+        return this.state.xy.y._value
+    }
+
+    // 满足refreshing对应的必要条件
+    _confirmRefreshingNecessaryCondition = async (refreshing) => {
+        if (this._getY() === this._getYByRefreshing(refreshing)) return true
+        await this._refreshAnim(refreshing)
+        return this._getY() === this._getYByRefreshing(refreshing) &&
+            this.animState.code === index.AnimStateEnum.ANIM_OK.code
+    }
+
+
+    //下拉的时候根据高度进行对应的操作
+    _setPullState = (moveHeight) => {
+        const {PULLING,PULL_OK, PULL_RELEASE} = index.PullStateEnum
+        let pullState = PULL_RELEASE
+        if (moveHeight > 0 && moveHeight < this.topIndicatorHeight) {
+            pullState = PULLING
+        } else if (moveHeight >= this.topIndicatorHeight) {
+            pullState = PULL_OK
+        }
+        this.setState({
+            pullState
+        })
+        this.props.onPullStateChange && this.props.onPullStateChange(this.state.pullState.code)
+    }
+
 
     // 收起动画(重置刷新的操作)
     _folderAnim = () => {
-        return new Promise((resolve, reject) => {
-            Animated.timing(this.state.pullPan, {
-                toValue: this.defaultXY,
-                easing: Easing.linear,
-                duration: this.duration
-            }).start((finished) => {
-                resolve({
-                    finished
-                })
-            })
-        })
+        return xyAnim(this.state.xy, this.defaultXY, this.duration)
     }
 
 
     // 展开动画
     _unfolderAnim = () => {
-        return new Promise((resolve, reject) => {
-            Animated.timing(this.state.pullPan, {
-                toValue: {x: 0, y: 0},
-                easing: Easing.linear,
-                duration: this.duration
-            }).start(({finished}) => {
-                resolve({
-                    finished
-                })
-            })
-        })
+        return xyAnim(this.state.xy, this.endXY, this.duration)
     }
 
 
