@@ -15,9 +15,20 @@ export const PullStateEnum = {
     }
 }
 
-export const pulling = "下拉刷新..."
-export const pullok = "松开刷新..."
-export const pullrelease = "正在刷新数据..."
+export const AnimStateEnum = {
+    ANIMING: {
+        code: 'animing',
+        msg: '正在动画'
+    },
+    ANIM_OK: {
+        code: 'animok',
+        msg: '动画正常结束'
+    },
+    ANIM_NOT_OK: {
+        code: 'animnotok',
+        msg: '动画未正常结束' // stop()或者被手势等打断
+    }
+}
 
 export const defaultDuration = 300
 export const defaultTopIndicatorHeight = 50 //顶部刷新指示器的高度

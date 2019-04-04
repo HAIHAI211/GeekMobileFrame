@@ -12,7 +12,7 @@ class PullRefreshDemoPage extends React.Component {
     constructor (props) {
         super(props)
         this.state = {
-            refreshing: true,
+            refreshing: false,
             dataSource: []
         }
     }

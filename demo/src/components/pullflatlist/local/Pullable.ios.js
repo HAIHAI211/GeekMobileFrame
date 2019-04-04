@@ -19,7 +19,8 @@ export default class Pullable extends PullRoot {
 
     constructor(props) {
         super(props)
-        this.isAniming = false // 是否正在执行展开或关闭的动画
+        this.animState = index.AnimStateEnum.ANIM_OK
+        this.refreshing = false
         this.topIndicatorHeight = this.props.topIndicatorHeight ?
             this.props.topIndicatorHeight : index.defaultTopIndicatorHeight
         this.defaultXY = {x: 0, y: this.topIndicatorHeight * -1}
@@ -36,10 +37,10 @@ export default class Pullable extends PullRoot {
             onPanResponderRelease: this.onPanResponderRelease,
             onPanResponderTerminate: this.onPanResponderRelease,
         })
+        // console.warn(props.refreshing)
         this.state = {
             ...this.state,
             props,
-            refreshing: null, // 必须要和props的refreshing不一样，不然无法触发watchStateRefreshing
             pullPan: new Animated.ValueXY(this.defaultXY),
             atTop: true,
             height: 0,
@@ -53,7 +54,6 @@ export default class Pullable extends PullRoot {
             <View style={{flex: 1, zIndex: -999}} {...this.panResponder.panHandlers} onLayout={this.onLayout}>
                 {this.props.isContentScroll ?
                     <View pointerEvents='box-none'>
-                        <View style={{position:'absolute',left:0,top:200,zIndex:100,backgroundColor:'green',height:50,width:300}}><Text>{this.state.log}</Text></View>
                         <Animated.View style={[this.state.pullPan.getLayout()]}>
                             {this.renderTopIndicator()}
                             {this.renderScrollContainer()}
@@ -83,12 +83,45 @@ export default class Pullable extends PullRoot {
         )
     }
 
-    componentDidMount () {
-        this._watch(true)
+    componentDidMount = async () => {
+        if (this.props.refreshing !== this.refreshing) {
+            this._setStateRefreshing(this.props.refreshing)
+        }
     }
 
-    componentDidUpdate (prevProps, prevState) {
-        this._watch(false, prevProps, prevState)
+    componentDidUpdate = async (prevProps, prevState) =>  {
+        if (this.props.refreshing !== this.refreshing) {
+            this._setStateRefreshing(this.props.refreshing)
+        }
+    }
+
+    // 先移动y，y达到要求（true为flagY,false为defaultY），才能修改refreshing
+    _setStateRefreshing = async (nextRefreshing) => {
+        await this._refreshAnim(nextRefreshing)
+        if (this.animState.code === index.AnimStateEnum.ANIM_OK.code) { // y符合刷新要求
+            this.refreshing = nextRefreshing
+            this.props.onRefresh && this.props.onRefresh(nextRefreshing)
+        }
+    }
+
+
+    //下拉的时候根据高度进行对应的操作
+    setPullState = (moveHeight) => {
+        let topHeight = this.topIndicatorHeight
+        if (moveHeight > 0 && moveHeight < topHeight) { //此时是下拉没有到位的状态
+            this.setState({
+                pullState: index.PullStateEnum.PULLING
+            })
+        } else if (moveHeight >= topHeight) { //下拉刷新到位
+            this.setState({
+                pullState: index.PullStateEnum.PULL_OK
+            })
+        } else { //下拉刷新释放,此时返回的值为-1
+            this.setState({
+                pullState: index.PullStateEnum.PULL_RELEASE
+            })
+        }
+        this.props.onPullStateChange && this.props.onPullStateChange(this.state.pullState.code)
     }
 
 
@@ -113,9 +146,9 @@ export default class Pullable extends PullRoot {
         }
     }
 
-    onPanResponderRelease = (e, gesture) => {
-        let refreshing = this.state.pullState === index.PullStateEnum.PULL_OK
-        this.setStateRefreshing(refreshing)
+    onPanResponderRelease = async (e, gesture) => {
+        let nextRefreshing = this.state.pullState.code === index.PullStateEnum.PULL_OK.code
+        this._setStateRefreshing(nextRefreshing)
         this.setPullState(-1)
     }
 
@@ -126,8 +159,10 @@ export default class Pullable extends PullRoot {
                 toValue: this.defaultXY,
                 easing: Easing.linear,
                 duration: this.duration
-            }).start(() => {
-                resolve()
+            }).start((finished) => {
+                resolve({
+                    finished
+                })
             })
         })
     }
@@ -140,17 +175,20 @@ export default class Pullable extends PullRoot {
                 toValue: {x: 0, y: 0},
                 easing: Easing.linear,
                 duration: this.duration
-            }).start(() => {
-                resolve()
+            }).start(({finished}) => {
+                resolve({
+                    finished
+                })
             })
         })
     }
 
 
-    _refreshAnim = async (refreshing) => {
-        this.isAniming = true
-        refreshing ? await this._unfolderAnim() : await this._folderAnim()
-        this.isAniming = false
+    _refreshAnim = async (nextRefreshing) => {
+        this.animState = index.AnimStateEnum.ANIMING
+        let animFinished = nextRefreshing ? await this._unfolderAnim() : await this._folderAnim()
+        this.animState = animFinished ? index.AnimStateEnum.ANIM_OK : index.AnimStateEnum.ANIM_NOT_OK
+        return this.animState
     }
 
 
@@ -168,55 +206,4 @@ export default class Pullable extends PullRoot {
         }
     }
 
-
-    _watch = (first,prevProps, prevState) => {
-        if (first) {
-            this._watchPropRefreshing(this.props.refreshing)
-        } else {
-            let {
-                refreshing:oldPropRefreshing
-            } = prevProps
-
-            if (oldPropRefreshing !== this.props.refreshing) {
-                this._watchPropRefreshing(this.props.refreshing, oldPropRefreshing)
-            }
-        }
-    }
-    _watchPropRefreshing = (newV, oldv) => {
-        this.setStateRefreshing(newV)
-    }
-    _watchStateRefreshing = async (newV, oldv) => {
-        await this._refreshAnim(newV)
-        this.props.onRefresh(newV)
-    }
-
-
-    setStateRefreshing = (refreshing) => {
-        this.setState({
-            refreshing
-        })
-        this._watchStateRefreshing(refreshing)
-        // if (oldV !== refreshing) { 不能进行浅比较，因为false->false依然需要执行动画等操作，不能完全忽略
-        //
-        // }
-    }
-
-    //下拉的时候根据高度进行对应的操作
-    setPullState = (moveHeight) => {
-        let topHeight = this.topIndicatorHeight
-        if (moveHeight > 0 && moveHeight < topHeight) { //此时是下拉没有到位的状态
-            this.setState({
-                pullState: index.PullStateEnum.PULLING
-            })
-        } else if (moveHeight >= topHeight) { //下拉刷新到位
-            this.setState({
-                pullState: index.PullStateEnum.PULL_OK
-            })
-        } else { //下拉刷新释放,此时返回的值为-1
-            this.setState({
-                pullState: index.PullStateEnum.PULL_RELEASE
-            })
-        }
-        this.props.onPullStateChange && this.props.onPullStateChange(this.state.pullState.code)
-    }
 }
