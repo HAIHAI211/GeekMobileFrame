@@ -56,9 +56,9 @@ class PullRefreshDemoPage extends React.Component {
     }
 
     _onRefresh = (refreshing) => {
-        if (refreshing) {
-            console.warn('onRefresh')
-        }
+        // if (refreshing) {
+        //     console.warn('onRefresh')
+        // }
         this.setState({
             refreshing
         })
@@ -71,7 +71,7 @@ class PullRefreshDemoPage extends React.Component {
                     dataSource: this._fetchList(),
                     refreshing: false
                 })
-            }, 4000)
+            }, 2000)
         }
     }
 }
