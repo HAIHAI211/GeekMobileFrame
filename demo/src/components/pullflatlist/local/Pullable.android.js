@@ -100,7 +100,6 @@ export default class Pullable extends PullRoot {
 
     // prop => refreshing change
     componentDidMount = async () => {
-        console.log('didmount')
         this._setRefreshing(this.props.refreshing, 'DidMount')
     }
 
