@@ -43,7 +43,9 @@ export default class PullRoot extends PureComponent {
 
                 <ActivityIndicator size="small" color="gray" style={{marginRight: 5}}/>
 
-                <Text>{this.state.pullState.msg}</Text>
+                <Text>爱的魔力转圈圈</Text>
+
+                {/*<Text>{this.state.pullState.msg}</Text>*/}
             </View>
         )
     }

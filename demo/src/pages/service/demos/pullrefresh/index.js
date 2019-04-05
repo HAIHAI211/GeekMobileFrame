@@ -49,7 +49,7 @@ class PullRefreshDemoPage extends React.Component {
         for (let i = 0; i < 50; i++) {
             arr.push({
                 key: `key${i}`,
-                value: `第${i+1}行`
+                value: `第${i+1}`
             })
         }
         return arr

@@ -69,7 +69,7 @@ export default class Pullable extends PullRoot {
             <View style={{flex: 1, zIndex: -999}} {...this.panResponder.panHandlers} onLayout={this.onLayout}>
                 {this.props.isContentScroll ?
                     <View pointerEvents='box-none'>
-                        <Animated.View style={[this.state.xy.getLayout()]}>
+                        <Animated.View style={[{transform: this.state.xy.getTranslateTransform()}]}>
                             {this.renderTopIndicator()}
                             {this.renderScrollContainer()}
                         </Animated.View>

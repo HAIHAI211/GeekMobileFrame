@@ -65,11 +65,12 @@ export default class Pullable extends PullRoot {
     }
 
     render() {
+        console.log('渲染')
         return (
             <View style={{flex: 1, zIndex: -999}} {...this.panResponder.panHandlers} onLayout={this.onLayout}>
                 {this.props.isContentScroll ?
                     <View pointerEvents='box-none'>
-                        <Animated.View style={[this.state.xy.getLayout()]}>
+                        <Animated.View style={[{transform: this.state.xy.getTranslateTransform()}]}>
                             {this.renderTopIndicator()}
                             {this.renderScrollContainer()}
                         </Animated.View>
@@ -110,6 +111,7 @@ export default class Pullable extends PullRoot {
 
     // pull => refreshing change
     onShouldSetPanResponder = (e, gesture) => { // 顶部+手势向下+配置许可方可开启refresh
+        console.log('判断')
         let y = this.scroll._listRef._getScrollMetrics().offset
         //根据y的值来判断是否到达顶部
         this.setState({
@@ -123,6 +125,7 @@ export default class Pullable extends PullRoot {
     }
 
     onPanResponderMove = (e, gesture) => {
+        console.log('移动')
         if (index.isDownGesture(gesture.dx, gesture.dy) && this.props.refreshable) { //下拉
             let dy = gesture.dy / 2
             this.state.xy.setValue({x: this.defaultXY.x, y: this.startY + dy})
