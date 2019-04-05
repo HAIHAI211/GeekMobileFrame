@@ -1,5 +1,5 @@
 import React from 'react'
-import {StyleSheet, View, Text} from 'react-native'
+import {StyleSheet, View, Text, ToastAndroid} from 'react-native'
 import {CommonStyle} from '../../../../assets/styles'
 import {PullFlatList} from '../../../../components/pullflatlist'
 import {rpx} from '../../../../utils/screenUtil'
@@ -11,8 +11,9 @@ class PullRefreshDemoPage extends React.Component {
 
     constructor (props) {
         super(props)
+        this.flag = false
         this.state = {
-            refreshing: true,
+            refreshing: false,
             dataSource: []
         }
     }
@@ -44,7 +45,7 @@ class PullRefreshDemoPage extends React.Component {
         )
     }
 
-    _fetchList = () => {
+    _mockData = () => {
         let arr = []
         for (let i = 0; i < 50; i++) {
             arr.push({
@@ -55,24 +56,33 @@ class PullRefreshDemoPage extends React.Component {
         return arr
     }
 
-    _onRefresh = (refreshing) => {
-        // if (refreshing) {
-        //     console.warn('onRefresh')
-        // }
-        this.setState({
-            refreshing
-        })
-        if (refreshing) {
-            // this.setState({
-            //     dataSource: []
-            // })
-            setTimeout(() => {
-                this.setState({
-                    dataSource: this._fetchList(),
-                    refreshing: false
-                })
-            }, 2000)
+    _onRefresh = async () => {
+        console.log(`onRefresh ${this.state.refreshing} => true`)
+        ToastAndroid.show('onRefresh', ToastAndroid.SHORT)
+        try {
+            const result = await this._fetchList()
+            console.log(`数据请求成功`)
+            ToastAndroid.show('数据请求成功', ToastAndroid.SHORT)
+            this.setState({
+                dataSource: result, // 此字段必定会让子组件重选渲染
+                refreshing: false
+            })
+        } catch (e) {
+            console.log(e)
+            ToastAndroid.show('数据请求失败', ToastAndroid.SHORT)
+            this.setState({
+                refreshing: false
+            })
         }
+    }
+
+    _fetchList = () => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                this.flag ? resolve(this._mockData()) : reject('network error')
+                this.flag = !this.flag
+            }, 4000)
+        })
     }
 }
 
