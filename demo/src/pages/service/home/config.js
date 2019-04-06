@@ -50,7 +50,7 @@ const cardList = [
             },
             {
                 title: 'Swiper 滑块视图',
-                url: ''
+                url: 'SwiperDemoPage'
             }
         ]
     }
