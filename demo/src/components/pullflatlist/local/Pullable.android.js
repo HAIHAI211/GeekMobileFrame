@@ -39,6 +39,7 @@ export default class Pullable extends PullRoot {
 
     constructor(props) {
         super(props)
+        this.animType = index.AnimType.STATE_SWITCH
         this.animState = index.AnimStateEnum.ANIM_OK
         this.refreshing = false
         this.pullState = index.PullStateEnum.PULL_RELEASE
@@ -173,19 +174,19 @@ export default class Pullable extends PullRoot {
         let nowRefreshing = this.refreshing
         let nextRefreshing = false
 
-        // if (!nowRefreshing) { // 不允许组件内部在refreshing为true时改变其为false
-        //     if (this.pullState.code === index.PullStateEnum.PULL_OK.code ||
-        //         (gesture.vy >= 0.2 && this.moveCount <= 3)) {
-        //         nextRefreshing = true
-        //     }
-        // } else {
-        //     nextRefreshing = true
-        // }
-
-        if (this.pullState.code === index.PullStateEnum.PULL_OK.code ||
-            (gesture.vy >= 0.2 && this.moveCount <= 3)) {
+        if (!nowRefreshing) { // 不允许组件内部在refreshing为true时改变其为false
+            if (this.pullState.code === index.PullStateEnum.PULL_OK.code ||
+                (gesture.vy >= 0.2 && this.moveCount <= 3)) {
+                nextRefreshing = true
+            }
+        } else {
             nextRefreshing = true
         }
+
+        // if (this.pullState.code === index.PullStateEnum.PULL_OK.code ||
+        //     (gesture.vy >= 0.2 && this.moveCount <= 3)) {
+        //     nextRefreshing = true
+        // }
 
 
 
@@ -195,11 +196,17 @@ export default class Pullable extends PullRoot {
         // true => true 恢复true的必要条件
         // false => false 恢复false的必要条件
         if (nextRefreshing !== nowRefreshing) {
-            console.log('修改refreshing 值', `${nowRefreshing} => ${nextRefreshing}`)
+            console.log('内部决定：状态切换', `${nowRefreshing} => ${nextRefreshing}`)
             this._setRefreshing(nextRefreshing, 'release')
         } else {
-            console.log('执行回调动画', nowRefreshing)
-            this._refreshAnim(nowRefreshing)
+            // 需要判断状态切换动画是否在运行，如果有状态切换动画正在执行则不执行状态回调动画
+            if (this.animType.code === index.AnimType.STATE_SWITCH.code
+                && this.animState.code === index.AnimStateEnum.ANIMING) {
+                console.log('内部决定：因为正处于状态切换动画，故取消本次状态回调', nowRefreshing)
+            } else {
+                this.animType = index.AnimType.STATE_BACK
+                this._refreshAnim(nowRefreshing)
+            }
         }
         this._setPullState(-1)
 
@@ -240,6 +247,7 @@ export default class Pullable extends PullRoot {
     // 满足refreshing对应的必要条件
     _confirmRefreshingNecessaryCondition = async (refreshing) => {
         if (this._getY() === this._getYByRefreshing(refreshing)) return true
+        this.animType = index.AnimType.STATE_SWITCH
         await this._refreshAnim(refreshing)
         return this._getY() === this._getYByRefreshing(refreshing) &&
             this.animState.code === index.AnimStateEnum.ANIM_OK.code
@@ -280,6 +288,7 @@ export default class Pullable extends PullRoot {
             console.log('动画执行结果', animFinished)
             return this.animState
         } catch (e) {
+            this.animState = index.AnimStateEnum.ANIM_ERROR
             console.log('【动画异常】', e)
         }
 

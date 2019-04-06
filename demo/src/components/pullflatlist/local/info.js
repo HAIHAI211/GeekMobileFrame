@@ -27,6 +27,21 @@ export const AnimStateEnum = {
     ANIM_NOT_OK: {
         code: 'animnotok',
         msg: '动画未正常结束' // stop()或者被手势等打断
+    },
+    ANIM_ERROR: {
+        code: 'animerror',
+        msg: '动画异常'
+    }
+}
+
+export const AnimType = {
+    STATE_BACK: {
+        code: 'stateback',
+        msg: '状态回调动画'
+    },
+    STATE_SWITCH: {
+        code: 'stateswitch',
+        msg: '状态切换动画'
     }
 }
 
