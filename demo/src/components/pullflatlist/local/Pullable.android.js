@@ -11,6 +11,8 @@ import PullRoot from './PullRoot'
         2、如果是react， 依旧可以汲取vue的watch思想，利用props改变必会触发componentDidUpdate来实现对props的监听;对于state的监听，则
  采用自行封装set方法，在set方法内调用state的watch方法来实现。
         3、setState必触发子组件的shouldUpdateComponent
+        4、状态切换动画会被打断，会导致状态改变失败，需要手动更改
+        5、onResponderMove在flatlist改为view后不再出现异常，不再触发onResponderTerminate
 
  @author 孙正
  * */
@@ -32,6 +34,7 @@ const xyAnim = (startXY, targetXY, duration) => {
 // 判断是否顶部
 const isAtTop = (flatlist) => {
     return flatlist._listRef._getScrollMetrics().offset <= 0
+    // return true
 }
 
 
@@ -50,17 +53,18 @@ export default class Pullable extends PullRoot {
         this.endXY = {x: 0, y: 0}
         this.duration = this.props.duration ? this.props.duration : index.defaultDuration
         this.panResponder = PanResponder.create({
-            // onStartShouldSetPanResponder: (e, g) => {return this.onShouldSetPanResponder(e, g, 'startShould')},
-            // onStartShouldSetPanResponderCapture: (e, g) => {return this.onShouldSetPanResponder(e, g, 'startShouldCapture')},
+            onStartShouldSetPanResponder: (e, g) => {return this.onShouldSetPanResponder(e, g, 'startShould')},
+            onStartShouldSetPanResponderCapture: (e, g) => {return this.onShouldSetPanResponder(e, g, 'startShouldCapture')},
             onMoveShouldSetPanResponder: (e, g) => {return this.onShouldSetPanResponder(e, g, 'moveShould')},
             onMoveShouldSetPanResponderCapture: (e, g) => {return this.onShouldSetPanResponder(e, g, 'moveShouldCapture')},
 
-            onPanResponderTerminationRequest: (evt, gestureState) => false, //这个很重要，这边不放权
+            onPanResponderTerminationRequest: this.onPanResponderTerminationRequest,
 
-            onPanResponderGrant: this.onPanResponderStart,
+            onPanResponderGrant: this.onPanResponderGrant,
+            onPanResponderReject: this.onPanResponderReject,
             onPanResponderMove: this.onPanResponderMove,
-            onPanResponderRelease: this.onPanResponderEnd,
-            onPanResponderTerminate: this.onPanResponderEnd,
+            onPanResponderRelease: this.onPanResponderRelease,
+            onPanResponderTerminate: this.onPanResponderTerminate,
         })
         this.state = {
             ...this.state,
@@ -76,13 +80,13 @@ export default class Pullable extends PullRoot {
         return (
             <View style={{flex: 1, zIndex: -999}} {...this.panResponder.panHandlers} onLayout={this.onLayout}>
                 {this.props.isContentScroll ?
-                    <View pointerEvents='box-none'>
+                    <View pointerEvents='none'>
                         <Animated.View style={[{transform: this.state.xy.getTranslateTransform()}]}>
                             {this.renderTopIndicator()}
+                            {/*<View style={{backgroundColor: 'red', height: 500,width: '100%'}}></View>*/}
                             {this.renderScrollContainer()}
                         </Animated.View>
                     </View> :
-
                     <View>
                         {this.renderScrollContainer()}
                         <View pointerEvents='box-none'
@@ -131,10 +135,22 @@ export default class Pullable extends PullRoot {
         this._setRefreshing(this.props.refreshing, 'DidUpdate')
     }
 
+    onPanResponderReject = () => {
+        console.log('---reject---')
+    }
+
+    onPanResponderTerminate = () => {
+        console.log('---打断---')
+    }
+
+    onPanResponderTerminationRequest = () => {
+        console.log('---打断请求---')
+        return false
+    }
+
 
     // pull => refreshing change
     onShouldSetPanResponder = (e, gesture, byWho) => { // 顶部+手势向下+配置许可方可开启refresh
-
         if (isAtTop(this.scroll) && index.isDownGesture(gesture.dx, gesture.dy) && this.props.refreshable) {
             console.log('判断', byWho, true, gesture.dx.toFixed(5), gesture.dy.toFixed(5))
             return true
@@ -143,8 +159,8 @@ export default class Pullable extends PullRoot {
         return false
     }
 
-    onPanResponderStart = (e, gesture) => {
-        console.log('--开始--', gesture.dy.toFixed(5))
+    onPanResponderGrant = (e, gesture) => {
+        console.log('--onPanResponderGrant--', gesture.dy.toFixed(5))
         this.startY = this._getY()
         this.moveCount = 0
     }
@@ -156,11 +172,6 @@ export default class Pullable extends PullRoot {
         console.log('--移动--', gesture.dy.toFixed(5), gesture.vy)
         this.state.xy.setValue({x: this.defaultXY.x, y: this.startY + dy})
         this._setPullState(dy)
-        // if (index.isDownGesture(gesture.dx, gesture.dy) && this.props.refreshable) { //下拉
-        //     let dy = gesture.dy
-        //     this.state.xy.setValue({x: this.defaultXY.x, y: this.startY + dy})
-        //     this._setPullState(dy)
-        // }
     }
 
     // 安卓机在滑动过快时会出现gesture.dy明显小于实际的触摸距离
@@ -168,48 +179,38 @@ export default class Pullable extends PullRoot {
     // 1、onPanResponderMove的调用次数只有1-3次
     // 2、onPanResponderRelease的速度明显较快，大致在0.2及以上，而正常滑动时速度在0.0x
     // 为了修复这个安卓bug，我们在松开手指时，判断是否刷新的条件除了距离达标，还要加上一个[或条件]即滑动过快时也认为可以刷新
-    onPanResponderEnd = async (e, gesture) => {
+    onPanResponderRelease = async (e, gesture) => {
         console.log('--放手--', gesture.dy.toFixed(5), gesture.vy)
-        // 根据业务逻辑确定nextRefreshing的值
         let nowRefreshing = this.refreshing
         let nextRefreshing = false
 
-        if (!nowRefreshing) { // 不允许组件内部在refreshing为true时改变其为false
-            if (this.pullState.code === index.PullStateEnum.PULL_OK.code ||
-                (gesture.vy >= 0.2 && this.moveCount <= 3)) {
-                nextRefreshing = true
-            }
-        } else {
+        // 根据业务逻辑确定nextRefreshing的值
+
+        if (this.animType.code === index.AnimType.STATE_SWITCH.code &&
+            this.animState.code !== index.AnimStateEnum.ANIM_OK.code) { // 如果状态切换动画被打断,代表状态修改失败，需手动修复
+            console.log('【状态切换被打断】')
+            nextRefreshing = !nowRefreshing
+        } else if (nowRefreshing) { // 不允许组件内部在refreshing为true时改变其为false
+          console.log('【不允许内部true->false】')
             nextRefreshing = true
+        } else if (this.pullState.code === index.PullStateEnum.PULL_OK.code ||
+          (gesture.vy >= 0.2 && this.moveCount <= 3)) { // 下拉距离够或者下拉速度快
+          console.log('【下拉距离够了】')
+            nextRefreshing = true
+        } else {
+          console.log('【下拉距离不够】')
+            nextRefreshing = false
         }
+        this._setPullState(-1)
 
-        // if (this.pullState.code === index.PullStateEnum.PULL_OK.code ||
-        //     (gesture.vy >= 0.2 && this.moveCount <= 3)) {
-        //     nextRefreshing = true
-        // }
-
-
-
-
-        // //  true => false 恢复true的必要条件(业务逻辑不允许)
-        // false => true 正常调用setRefreshing即可
-        // true => true 恢复true的必要条件
-        // false => false 恢复false的必要条件
         if (nextRefreshing !== nowRefreshing) {
             console.log('内部决定：状态切换', `${nowRefreshing} => ${nextRefreshing}`)
             this._setRefreshing(nextRefreshing, 'release')
         } else {
-            // 需要判断状态切换动画是否在运行，如果有状态切换动画正在执行则不执行状态回调动画
-            if (this.animType.code === index.AnimType.STATE_SWITCH.code
-                && this.animState.code === index.AnimStateEnum.ANIMING) {
-                console.log('内部决定：因为正处于状态切换动画，故取消本次状态回调', nowRefreshing)
-            } else {
-                this.animType = index.AnimType.STATE_BACK
-                this._refreshAnim(nowRefreshing)
-            }
+            console.log('内部决定：状态回调', nowRefreshing)
+            this.animType = index.AnimType.STATE_BACK
+            this._refreshAnim(nowRefreshing)
         }
-        this._setPullState(-1)
-
     }
 
     _setRefreshing = async (nextRefreshing, byWho) => {
@@ -285,7 +286,7 @@ export default class Pullable extends PullRoot {
         try {
             let animFinished = nextRefreshing ? await this._unfolderAnim() : await this._folderAnim()
             this.animState = animFinished.finished ? index.AnimStateEnum.ANIM_OK : index.AnimStateEnum.ANIM_NOT_OK
-            console.log('动画执行结果', animFinished)
+            console.log(`${this.animType.code}动画执行结果`, animFinished)
             return this.animState
         } catch (e) {
             this.animState = index.AnimStateEnum.ANIM_ERROR
@@ -296,6 +297,7 @@ export default class Pullable extends PullRoot {
 
 
     onLayout = (e) => {
+        console.log('onLayout')
         let {width:newWidth, height:newHeight} = e.nativeEvent.layout
         if (this.state.width !== newWidth || this.state.height !== newHeight) {
             this.scrollContainer && this.scrollContainer.setNativeProps({
