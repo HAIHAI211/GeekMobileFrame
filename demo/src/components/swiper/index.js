@@ -35,6 +35,7 @@ class Swiper extends React.Component {
     this.index = 0
     this.animType = undefined
     this.animState = undefined
+    this.animId = 0
     this.timer = null
     this.panResponder = PanResponder.create({
       // 申请授权
@@ -70,6 +71,7 @@ class Swiper extends React.Component {
   }
 
   componentWillUnmount () {
+    console.log('unMount')
     this.clearTimer()
   }
 
@@ -80,7 +82,7 @@ class Swiper extends React.Component {
         <Animated.View style={[styles.AnimatedContainer, {transform: this.state.pan.getTranslateTransform()}]}>
           {
             this.data.map((item, index) => {
-              return Swiper.renderItem(item)
+              return this.props.renderItem(item, index)
             })
           }
         </Animated.View>
@@ -110,7 +112,7 @@ class Swiper extends React.Component {
   onTouchEnd = (e, gesture) => {
     console.log('onTouchEnd')
     let newStatus = undefined
-    if (Math.abs(gesture.dx) < this.width / 3) {
+    if (Math.abs(gesture.dx) < this.width / 4) {
       newStatus = this.index
     } else {
       let rightToLeft = gesture.dx < 0
@@ -128,7 +130,6 @@ class Swiper extends React.Component {
       await this._statusAnim(AnimType.STATUS_BACK,newStatus)
     } else {
       let newStatusXY = this._getXYByStatus(newStatus)
-      console.log('newStatusXY', newStatusXY)
       if (!this._checkCondition(newStatusXY.x)) { // 满足必要条件
         await this._statusAnim(AnimType.STATUS_UPDATE,newStatus)
       }
@@ -142,28 +143,34 @@ class Swiper extends React.Component {
         this.data[1].index : this.data[this.data.length - 2].index
       this.state.pan.setValue({x: this._getXYByStatus(realIndex).x, y: 0})
       this.index = realIndex
-      console.log(`瞬间切换状态${lastIndex} => ${realIndex}`, this.index, this.minIndex, this.maxIndex, this.data.length)
+      console.log(`瞬切状态${lastIndex} => ${realIndex}`)
     }
-    await this.sleep()
-    await this.switchStatus(this._getNextStatus(), this.index)
+    // 设置定时任务前务必取消上一个定时器
+    // 涉及到取消定时器，不要用promise封装setTimeout，因为取消的仅仅是sleep中的方法，sleep后面的方法依然会被执行
+    this.clearTimer()
+    this.timer = setTimeout(() => {
+      this.switchStatus(this._getNextStatus(), this.index)
+    }, 4000)
   }
-
-  sleep = (delay = 4000) => {
-    return new Promise((resolve, reject) => {
-      this.timer = setTimeout(() => {
-        resolve()
-      }, delay)
-    })
-  }
+  // 涉及到取消定时器，不要用promise封装setTimeout，因为取消的仅仅是sleep中的方法，sleep后面的方法依然会被执行
+  // sleep = (delay = 4000) => {
+  //   return new Promise((resolve, reject) => {
+  //     let lastTimer = this.timer
+  //     this.timer = setTimeout(() => {
+  //       resolve()
+  //     }, delay)
+  //     console.log('--设置定时器', `${lastTimer} => ${this.timer}`)
+  //   })
+  // }
 
   clearTimer = () => {
-    console.log('--取消定时器--', this.timer == null)
+    console.log('--取消定时器--', this.timer)
     this.timer && clearTimeout(this.timer)
     this.timer = null
   }
 
   clearAnim = () => {
-    console.log('取消动画', this.anim == null)
+    console.log('取消动画', this.anim)
     this.anim && this.anim.stop()
     this.anim = null
   }
@@ -190,13 +197,14 @@ class Swiper extends React.Component {
 
   // statusUpdateAnim statusBackAnim
   _statusAnim = async (animType, newStatus) => {
-    console.log('动画 --开始', animType)
+    this.animId = this.animId + 1
+    console.log(`动画 --开始${this.animId}`, animType)
     this.animType = animType
     this.animState = AnimState.ANIMING
     let startXY = this.state.pan
     let endXY = this._getXYByStatus(newStatus)
     const {finished} = await this.baseAnim(startXY, endXY)
-    console.log('动画 --结束', animType, finished)
+    console.log(`动画 --结束${this.animId}`, animType, finished)
     this.animState = finished ? AnimState.ANIM_OK : AnimState.ANIM_NOT_OK
   }
 
