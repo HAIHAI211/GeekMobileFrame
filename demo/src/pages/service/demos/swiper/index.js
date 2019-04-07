@@ -10,13 +10,23 @@ class SwiperDemoPage extends React.Component {
     }
 
     render () {
+        const data = this._createData()
         return (
             <View style={styles.container}>
                 <Text>SwiperDemoPage</Text>
-                <Swiper/>
+                <Swiper data={data}/>
             </View>
         )
     }
+
+    _createData () {
+        let bgColors = ['red', 'yellow', 'green', 'blue']
+        return bgColors.map((item) => {
+        return {
+            bgColor: item
+        }
+    })
+  }
 }
 
 const styles = StyleSheet.create({

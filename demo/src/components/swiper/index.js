@@ -3,10 +3,6 @@ import {StyleSheet, View, Text, Animated, Easing, PanResponder} from 'react-nati
 import {CommonStyle} from '../../assets/styles'
 import {rpx} from '../../utils/screenUtil'
 
-
-
-
-
 const isXGesture = (x, y) => {
   return Math.abs(x) >= Math.abs(y)
 }
@@ -28,7 +24,10 @@ class Swiper extends React.Component {
 
   constructor (props) {
     super(props)
-    this.data = this._createData()
+    this.data = Swiper._modifyData(props.data)
+    this.minIndex = this.data[0].index
+    this.maxIndex = this.data[this.data.length - 1].index
+    this.rightToLeft = true
     this.width = rpx(750)
     this.height = rpx(400)
     this.offsetX = 0
@@ -61,13 +60,13 @@ class Swiper extends React.Component {
 
     })
     this.state = {
-      pan: new Animated.ValueXY({x: 0, y: 0})
+      pan: new Animated.ValueXY({x: this._getXYByStatus(this.index).x, y: 0})
     }
   }
 
   componentDidMount () {
     console.log('didMount')
-    this.switchStatus(this._getNextStatus(this.index, this.data.length - 1), this.index)
+    this.switchStatus(this._getNextStatus(), this.index)
   }
 
   componentWillUnmount () {
@@ -81,7 +80,7 @@ class Swiper extends React.Component {
         <Animated.View style={[styles.AnimatedContainer, {transform: this.state.pan.getTranslateTransform()}]}>
           {
             this.data.map((item, index) => {
-              return this.renderItem(item)
+              return Swiper.renderItem(item)
             })
           }
         </Animated.View>
@@ -110,15 +109,14 @@ class Swiper extends React.Component {
 
   onTouchEnd = (e, gesture) => {
     console.log('onTouchEnd')
-    let oldStatus = this.index
     let newStatus = undefined
     if (Math.abs(gesture.dx) < this.width / 3) {
-      newStatus = oldStatus
+      newStatus = this.index
     } else {
       let rightToLeft = gesture.dx < 0
-      newStatus = this._getNextStatus(oldStatus, this.data.length - 1, rightToLeft)
+      newStatus = this._getNextStatus(rightToLeft)
     }
-    this.switchStatus(newStatus, oldStatus)
+    this.switchStatus(newStatus, this.index)
   }
 
 
@@ -128,8 +126,6 @@ class Swiper extends React.Component {
     console.log(`切换状态${oldStatus} => ${newStatus}`)
     if (newStatus === oldStatus) {
       await this._statusAnim(AnimType.STATUS_BACK,newStatus)
-      await this.sleep()
-      await this.switchStatus(this._getNextStatus(this.index,this.data.length - 1), this.index)
     } else {
       let newStatusXY = this._getXYByStatus(newStatus)
       console.log('newStatusXY', newStatusXY)
@@ -138,10 +134,18 @@ class Swiper extends React.Component {
       }
       if (this._checkCondition(newStatusXY.x)) {
         this.index = newStatus
-        await this.sleep()
-        await this.switchStatus(this._getNextStatus(this.index,this.data.length - 1), this.index)
       }
     }
+    if (this.index === this.maxIndex || this.index === this.minIndex) {
+      let lastIndex = this.index
+      let realIndex = this.index === this.maxIndex ?
+        this.data[1].index : this.data[this.data.length - 2].index
+      this.state.pan.setValue({x: this._getXYByStatus(realIndex).x, y: 0})
+      this.index = realIndex
+      console.log(`瞬间切换状态${lastIndex} => ${realIndex}`, this.index, this.minIndex, this.maxIndex, this.data.length)
+    }
+    await this.sleep()
+    await this.switchStatus(this._getNextStatus(), this.index)
   }
 
   sleep = (delay = 4000) => {
@@ -201,18 +205,23 @@ class Swiper extends React.Component {
   // 获取对应状态的坐标
   _getXYByStatus = (status) => {
     let y = 0
-    let x = status * this.width * -1
+    // -1 => 0 , 0 => 1 * width * -1 , 1 => 2 * width * -1
+    let x = (status + 1) * this.width * -1
     return {x, y}
   }
 
-  _getNextStatus (nowIndex, maxIndex, rightToLeft = true, minIndex = 0) { // minIndex默认为0
+  _getNextStatus (rightToLeft = this.rightToLeft) {
+    return Swiper.getNextStatus(this.index, this.minIndex, this.maxIndex, rightToLeft)
+  }
+
+  static getNextStatus (nowIndex, minIndex, maxIndex, rightToLeft = true) {
     if (rightToLeft) {
       return nowIndex < maxIndex ? nowIndex + 1 : minIndex
     }
     return nowIndex > minIndex ? nowIndex - 1 : maxIndex
   }
 
-  renderItem (itemData) {
+  static renderItem (itemData) {
     return (
       <View style={[styles.item, {backgroundColor: itemData.bgColor}]}>
         <Text>{itemData.index}</Text>
@@ -220,15 +229,20 @@ class Swiper extends React.Component {
     )
   }
 
-  _createData () {
-    let bgColors = ['red', 'yellow', 'green', 'blue', 'orange', 'pink']
-    return bgColors.map((item, index) => {
+  static _modifyData (data) {
+    let result = [...data]
+    let first = data[0]
+    let last = data[data.length - 1]
+    result.unshift(last)
+    result.push(first)
+    return result.map((item, index) => {
       return {
-        bgColor: item,
-        index: index
+        ...item,
+        index: index - 1
       }
     })
   }
+
 }
 
 const styles = StyleSheet.create({
