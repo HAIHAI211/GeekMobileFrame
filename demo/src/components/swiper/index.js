@@ -20,7 +20,7 @@ const AnimState = {
 }
 
 
-class Swiper extends React.Component {
+class Swiper extends React.PureComponent {
 
   constructor (props) {
     super(props)
@@ -112,7 +112,7 @@ class Swiper extends React.Component {
   onTouchEnd = (e, gesture) => {
     console.log('onTouchEnd')
     let newStatus = undefined
-    if (Math.abs(gesture.dx) < this.width / 4) {
+    if (Math.abs(gesture.dx) < this.width / 4 && Math.abs(gesture.vx) < 0.6) {
       newStatus = this.index
     } else {
       let rightToLeft = gesture.dx < 0

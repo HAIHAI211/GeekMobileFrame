@@ -1,5 +1,5 @@
 import React from 'react'
-import {StyleSheet, View, Text, Image} from 'react-native'
+import {StyleSheet, View, Text, ImageBackground} from 'react-native'
 import {CommonStyle} from '../../../../assets/styles'
 import Swiper from '../../../../components/swiper'
 import {rpx} from '../.././../../utils/screenUtil'
@@ -51,11 +51,11 @@ class SwiperDemoPage extends React.Component {
     }
     _renderItem = (item, index) => {
         return (
-          <View style={{width: rpx(750), height: rpx(400), alignItems: 'center'}}>
-            <View style={{width: rpx(680), height: '100%', borderRadius: rpx(10), overflow: 'hidden', position: 'relative'}}>
-                <Text style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0}}>{item.title}</Text>
-                <Image source={{uri: item.img}} style={{width: '100%', height: '100%'}}/>
-            </View>
+          <View style={{width: rpx(750), height: rpx(400), alignItems: 'center'}} key={item.index + 'item'}>
+              <ImageBackground source={{uri: item.img}}
+                               style={{width: rpx(680), height: '100%', borderRadius: rpx(10), overflow: 'hidden', justifyContent:'center', alignItems: 'center'}}>
+                  <Text>{item.title}</Text>
+              </ImageBackground>
           </View>
         )
     }

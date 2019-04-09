@@ -16,10 +16,10 @@ class FadeInView extends React.Component{
     }
 
     componentWillUpdate (nextProps, nextState) { // before render()
-        console.log('将要更新')
+        // console.log('将要更新')
     }
     componentDidUpdate (prevProps, prevState) { // after render()
-        console.log('已经更新完毕')
+        // console.log('已经更新完毕')
         if (this.props.show) {
             Animated.sequence([
                 this._fadeInAnim(),

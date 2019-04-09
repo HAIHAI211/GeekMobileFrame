@@ -37,8 +37,8 @@ const cardList = [
         title: '组件',
         items: [
             {
-                title: 'Button 按钮',
-                url: ''
+                title: 'Toast 吐司',
+                url: 'ToastDemoPage'
             },
             {
                 title: 'PullRefresh 下拉刷新上拉加载',

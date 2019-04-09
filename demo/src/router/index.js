@@ -1,5 +1,5 @@
 import React from 'react'
-import {createSwitchNavigator, createStackNavigator} from 'react-navigation'
+import {createSwitchNavigator, createStackNavigator, createBottomTabNavigator} from 'react-navigation'
 import {connect} from '../utils/dva'
 
 import AuthLoadingPage from '../pages/authloading'
@@ -8,16 +8,23 @@ import SecondPage from '../pages/service/second'
 import LoginPage from '../pages/auth/login'
 import ForgetPwdPage from '../pages/auth/forgetPwd'
 import RegisterPage from '../pages/auth/register'
-import {PullRefreshDemoPage, SwiperDemoPage} from '../pages/service/demos'
+import {PullRefreshDemoPage, SwiperDemoPage, ToastDemoPage} from '../pages/service/demos'
 
 function mapStateToProps (state) {return {}}
+
+// 底部栏路由
+// const BottomTabRouter = createBottomTabNavigator({
+// }, {})
+
 
 // 业务路由
 const ServiceRouter = createStackNavigator({
     HomePage,
     SecondPage,
     PullRefreshDemoPage,
-    SwiperDemoPage
+    SwiperDemoPage,
+    ToastDemoPage
+
 }, {
     defaultNavigationOptions: {
         headerBackTitle: null
