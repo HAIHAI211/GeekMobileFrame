@@ -117,7 +117,7 @@ class ToastContainer extends Component {
 
     //移除监听、定时器
     componentWillUnmount = () => {
-        console.log('componentWillUnmount')
+        console.log('componentWillUnmount', 'ToastContainer')
         Dimensions.removeEventListener('change', this._windowChanged)
         Keyboard.removeListener('keyboardDidChangeFrame', this._keyboardDidChangeFrame)
         this._hide()

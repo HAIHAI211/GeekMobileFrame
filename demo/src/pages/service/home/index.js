@@ -7,6 +7,7 @@ import { rpx } from '../../../utils/screenUtil'
 import FadeInView from '../../../components/fadeinview'
 
 class HomePage extends React.Component {
+
     state = {
         loading: false,
         loadedTitleShow: false

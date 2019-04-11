@@ -12,15 +12,16 @@ class ToastDemoPage extends BaseComponent{
     }
 
     _onPress = () => {
-        this.setState({
-            visible: !this.state.visible
-        })
+        // this.setState({
+        //     visible: !this.state.visible
+        // })
+        Toast.show('hahah')
     }
     render () {
         return (
             <View style={styles.container}>
                 <Text>ToastPage</Text>
-                <Toast animation={true} visible={this.state.visible} duration={Toast.durations.LONG}>我天哪</Toast>
+                {/*<Toast animation={true} visible={this.state.visible} duration={Toast.durations.LONG}>我天哪</Toast>*/}
                 <Button title={this.state.visible.toString()} onPress={this._onPress}/>
             </View>
         )

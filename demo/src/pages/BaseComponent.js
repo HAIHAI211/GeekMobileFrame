@@ -5,7 +5,6 @@ import {rpx} from '../utils/screenUtil'
 
 class BaseComponent extends React.Component {
 
-
     constructor (props) {
         super(props)
         // this.Toast = Toast

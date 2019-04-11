@@ -16,6 +16,10 @@ const cardList = [
         title: '功能',
         items: [
             {
+                title: 'ImagePickCrop 照片选取与裁剪',
+                url: 'ImagePickCropDemoPage'
+            },
+            {
                 title: '推送',
                 url: ''
             },
@@ -46,7 +50,7 @@ const cardList = [
             },
             {
                 title: 'SwitchTab 切换视图',
-                url: ''
+                url: 'ScrollTabDemoPage'
             },
             {
                 title: 'Swiper 滑块视图',

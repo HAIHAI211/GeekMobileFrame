@@ -67,7 +67,10 @@ class Swiper extends React.PureComponent {
 
   componentDidMount () {
     console.log('didMount')
-    this.switchStatus(this._getNextStatus(), this.index)
+    this.clearTimer()
+    this.timer = setTimeout(() => {
+      this.switchStatus(this._getNextStatus(), this.index)
+    }, 4000)
   }
 
   componentWillUnmount () {
@@ -147,21 +150,13 @@ class Swiper extends React.PureComponent {
     }
     // 设置定时任务前务必取消上一个定时器
     // 涉及到取消定时器，不要用promise封装setTimeout，因为取消的仅仅是sleep中的方法，sleep后面的方法依然会被执行
-    this.clearTimer()
-    this.timer = setTimeout(() => {
-      this.switchStatus(this._getNextStatus(), this.index)
-    }, 4000)
+    if (this.animState === AnimState.ANIM_OK) {
+        this.clearTimer()
+        this.timer = setTimeout(() => {
+            this.switchStatus(this._getNextStatus(), this.index)
+        }, 4000)
+    }
   }
-  // 涉及到取消定时器，不要用promise封装setTimeout，因为取消的仅仅是sleep中的方法，sleep后面的方法依然会被执行
-  // sleep = (delay = 4000) => {
-  //   return new Promise((resolve, reject) => {
-  //     let lastTimer = this.timer
-  //     this.timer = setTimeout(() => {
-  //       resolve()
-  //     }, delay)
-  //     console.log('--设置定时器', `${lastTimer} => ${this.timer}`)
-  //   })
-  // }
 
   clearTimer = () => {
     console.log('--取消定时器--', this.timer)

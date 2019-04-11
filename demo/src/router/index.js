@@ -8,7 +8,13 @@ import SecondPage from '../pages/service/second'
 import LoginPage from '../pages/auth/login'
 import ForgetPwdPage from '../pages/auth/forgetPwd'
 import RegisterPage from '../pages/auth/register'
-import {PullRefreshDemoPage, SwiperDemoPage, ToastDemoPage} from '../pages/service/demos'
+import {
+    PullRefreshDemoPage,
+    SwiperDemoPage,
+    ToastDemoPage,
+    ScrollTabDemoPage,
+    ImagePickCropDemoPage
+} from '../pages/service/demos'
 
 function mapStateToProps (state) {return {}}
 
@@ -23,8 +29,9 @@ const ServiceRouter = createStackNavigator({
     SecondPage,
     PullRefreshDemoPage,
     SwiperDemoPage,
-    ToastDemoPage
-
+    ToastDemoPage,
+    ScrollTabDemoPage,
+    ImagePickCropDemoPage
 }, {
     defaultNavigationOptions: {
         headerBackTitle: null
